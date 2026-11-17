@@ -72,7 +72,7 @@ Run locally:
     pip install -r requirements.txt
     python api/index.py        # then open http://127.0.0.1:5001
 
-Deploy: import the GitHub repository at vercel.com/new (no settings need changing) and every push redeploys automatically.
+Deploy: import the GitHub repository at vercel.com/new (no settings need changing) and every push redeploys automatically. Step-by-step CLI instructions for an AI agent are in `DEPLOY.md`.
 
 
 **Support**
