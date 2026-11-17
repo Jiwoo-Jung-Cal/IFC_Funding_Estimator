@@ -139,8 +139,9 @@ def parse_money(x: str) -> float:
         return 0.0
     s = s.replace("$", "").replace(" ", "").replace(",", "")
     try:
-        return float(s)
-    except Exception:
+        amount = float(s)
+        return amount if np.isfinite(amount) else 0.0
+    except (TypeError, ValueError, OverflowError):
         return 0.0
 
 
