@@ -1,0 +1,11 @@
+# Desktop-only files: keep them out of the Vercel deployment so the root app.py
+# is not mistaken for the web entrypoint.
+app.py
+templates/
+predict_hist_v3.py
+IFC_Funding_Estimator.spec
+requirements-mac.txt
+requirements-win.txt
+investment_log.csv
+regional_budgets.json
+data.csv

@@ -60,5 +60,20 @@ No data is transmitted externally.
  - Ensure the application is closed before moving or deleting the file.
 
 
+**Web version (Vercel)**
+The repository also contains a web build of the estimator:
+
+ - `public/` – the web interface (static HTML/CSS/JS). Budgets and the investment log are stored in the browser's local storage; use Export/Import to move them as CSV (same columns as the desktop `investment_log.csv`).
+ - `api/index.py` – a stateless Flask API (`/api/predict`, `/api/project-types`, `/api/health`) that loads the same trained model and produces predictions identical to the desktop app.
+ - `requirements.txt`, `vercel.json`, `.vercelignore` – deployment configuration. scikit-learn is pinned to 1.7.2, the version the model was trained with.
+
+Run locally:
+
+    pip install -r requirements.txt
+    python api/index.py        # then open http://127.0.0.1:5001
+
+Deploy: import the GitHub repository at vercel.com/new (no settings need changing) and every push redeploys automatically.
+
+
 **Support**
 For questions or technical issues, please contact the developer.

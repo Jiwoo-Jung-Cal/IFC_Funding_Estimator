@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IFC Funding Estimator</title>
+  <meta name="description" content="Predict quarterly regional funding allocations with a machine-learning model trained on historical IFC investment data." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M9 22V14M16 22V9M23 22v-5' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M9 22V14M16 22V9M23 22v-5" /></svg>
+        </span>
+        <div>
+          <div class="brand-name">IFC Funding Estimator</div>
+          <div class="brand-sub">Quarterly regional allocation model</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btn-export" type="button" title="Download the investment log as CSV">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" /></svg><span>Export</span>
+        </button>
+        <label class="btn btn-ghost" title="Load an investment log CSV">
+          <svg viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 19h14" /></svg><span>Import</span>
+          <input type="file" id="file-import" accept=".csv,text/csv" hidden />
+        </label>
+        <div class="menu">
+          <button class="btn btn-ghost btn-icon" id="btn-menu" type="button" aria-haspopup="true" aria-expanded="false" title="More">
+            <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+          </button>
+          <div class="menu-pop" id="menu-pop" role="menu" hidden>
+            <button type="button" role="menuitem" id="btn-theme">Toggle dark mode</button>
+            <button type="button" role="menuitem" id="btn-demo">Load sample budgets</button>
+            <hr />
+            <button type="button" role="menuitem" class="danger" id="btn-clear-log">Clear investment log</button>
+            <button type="button" role="menuitem" class="danger" id="btn-clear-all">Clear log and budgets</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Overview -->
+    <section class="kpis" aria-label="Portfolio overview">
+      <div class="kpi"><div class="kpi-label">Total budget</div><div class="kpi-value" id="kpi-budget">$0</div></div>
+      <div class="kpi"><div class="kpi-label">Allocated</div><div class="kpi-value" id="kpi-allocated">$0</div><div class="kpi-meta" id="kpi-allocated-pct">0% of budget</div></div>
+      <div class="kpi"><div class="kpi-label">Remaining</div><div class="kpi-value accent" id="kpi-remaining">$0</div></div>
+      <div class="kpi"><div class="kpi-label">Projects logged</div><div class="kpi-value" id="kpi-count">0</div></div>
+    </section>
+
+    <!-- Budgets -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Regional budgets</h2>
+          <p class="muted">Remaining = budget − invested amounts logged for that region.</p>
+        </div>
+        <button class="btn btn-secondary" id="btn-edit-budgets" type="button">Edit budgets</button>
+      </div>
+      <form id="budget-form" autocomplete="off">
+        <div class="regions" id="regions"></div>
+        <div class="budget-actions" id="budget-actions" hidden>
+          <button class="btn btn-secondary" type="button" id="btn-cancel-budgets">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save budgets</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Estimate -->
+    <section class="estimate-grid">
+      <form class="panel" id="estimate-form" autocomplete="off">
+        <div class="panel-head">
+          <div>
+            <h2>New estimate</h2>
+            <p class="muted">Describe a project to get a recommended investment.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="label">Region</span>
+          <div class="segmented" id="seg-region" role="radiogroup" aria-label="Region"></div>
+          <div class="hint">Remaining in region: <strong class="mono" id="region-remaining">$0.00</strong></div>
+        </div>
+
+        <div class="field">
+          <span class="label">Quarter</span>
+          <div class="segmented" id="seg-quarter" role="radiogroup" aria-label="Quarter"></div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="ptype">Project type <span class="muted">(business area)</span></label>
+          <div class="combo">
+            <svg class="combo-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>
+            <input id="ptype" type="text" placeholder="Search, e.g. MAS-Health" role="combobox" aria-expanded="false" aria-controls="ptype-list" aria-autocomplete="list" required />
+            <span class="badge" id="ptype-badge" hidden></span>
+            <ul class="combo-list" id="ptype-list" role="listbox" hidden></ul>
+          </div>
+          <div class="hint" id="ptype-hint">Pick a known business area for the most reliable estimate.</div>
+        </div>
+
+        <div class="field toggles">
+          <label class="switch"><input type="checkbox" id="climate" /><span class="track"><span class="thumb"></span></span><span>Climate-related</span></label>
+          <label class="switch"><input type="checkbox" id="gender" /><span class="track"><span class="thumb"></span></span><span>Gender-focused</span></label>
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit" id="btn-estimate">
+          <span class="spinner" aria-hidden="true"></span><span class="btn-label">Estimate funding</span>
+        </button>
+      </form>
+
+      <div class="panel result" id="result" aria-live="polite">
+        <div class="empty" id="result-empty">
+          <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 15V9m5 6V5m5 10v-3"/></svg></div>
+          <h3>No estimate yet</h3>
+          <p class="muted">Set your regional budgets, choose a project, and press <b>Estimate funding</b>. The recommendation appears here.</p>
+        </div>
+
+        <div id="result-body" hidden>
+          <div class="result-meta" id="result-meta"></div>
+          <div class="result-label">Recommended investment</div>
+          <div class="result-amount mono" id="result-amount">$0.00</div>
+          <div class="result-ratio">
+            <span class="muted">Predicted share of remaining budget</span>
+            <strong class="mono" id="result-ratio">0%</strong>
+          </div>
+
+          <div class="bar" aria-hidden="true"><span class="bar-fill" id="result-bar"></span></div>
+          <dl class="result-stats">
+            <div><dt>Remaining before</dt><dd class="mono" id="result-before">$0.00</dd></div>
+            <div><dt>Remaining after</dt><dd class="mono" id="result-after">$0.00</dd></div>
+          </dl>
+
+          <details class="explain">
+            <summary>How is this calculated?</summary>
+            <p>The ratio blends a gradient-boosting model (<span class="mono" id="x-model"></span>) with the historical average for this business area (<span class="mono" id="x-hist"></span>), weighted <span class="mono" id="x-alpha"></span>. The recommendation is that ratio × the region's remaining budget, capped at what remains.</p>
+          </details>
+
+          <form class="confirm" id="confirm-form" autocomplete="off">
+            <label class="label" for="confirm-amount">Amount to log</label>
+            <div class="confirm-row">
+              <div class="money-input"><span>$</span><input id="confirm-amount" inputmode="decimal" /></div>
+              <button class="btn btn-primary" type="submit">Log investment</button>
+            </div>
+            <div class="hint">Edit for a custom amount. Values above the remaining budget are capped.</div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Investment log</h2>
+          <p class="muted" id="log-sub">Logged projects, newest first.</p>
+        </div>
+        <div class="filters">
+          <select id="filter-region" aria-label="Filter by region"></select>
+          <select id="filter-quarter" aria-label="Filter by quarter"></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="log-table">
+          <thead>
+            <tr>
+              <th>Region</th><th>Quarter</th><th>Project type</th><th>Tags</th>
+              <th class="num">Invested</th><th class="num">Remaining after</th><th class="actions-col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+        <div class="empty small" id="log-empty">
+          <p class="muted">No projects logged yet. Estimates you confirm will appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Distribute -->
+    <section class="panel">
+      <details class="distribute" id="distribute">
+        <summary>
+          <div>
+            <h2>Distribute remaining funds</h2>
+            <p class="muted">Top up logged projects in proportion to what they already received.</p>
+          </div>
+          <svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+
+        <form id="dist-form" class="dist-form" autocomplete="off">
+          <div class="field">
+            <label class="label" for="dist-quarter">Quarter</label>
+            <select id="dist-quarter"></select>
+            <div class="hint">Only projects logged in this quarter are eligible.</div>
+          </div>
+          <div class="field">
+            <label class="label" for="dist-region">Region</label>
+            <select id="dist-region"></select>
+            <div class="hint">“All regions” keeps each region's money within that region.</div>
+          </div>
+          <div class="field">
+            <label class="label" for="dist-mode">Amount</label>
+            <select id="dist-mode">
+              <option value="remaining">All remaining budget</option>
+              <option value="custom">Custom amount</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="dist-custom">Custom amount</label>
+            <div class="money-input"><span>$</span><input id="dist-custom" inputmode="decimal" placeholder="Capped at remaining" disabled /></div>
+          </div>
+          <div class="dist-submit">
+            <button class="btn btn-secondary" type="submit">Preview distribution</button>
+          </div>
+        </form>
+
+        <div id="dist-preview" hidden>
+          <div class="dist-summary" id="dist-summary"></div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Region</th><th>Quarter</th><th>Project type</th><th class="num">Current</th><th class="num">Added</th><th class="num">New total</th></tr></thead>
+              <tbody id="dist-body"></tbody>
+            </table>
+          </div>
+          <div class="budget-actions">
+            <button class="btn btn-secondary" type="button" id="btn-dist-cancel">Discard</button>
+            <button class="btn btn-primary" type="button" id="btn-dist-apply">Apply distribution</button>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <footer class="foot">
+      <p>Data stays in this browser (local storage). Use <b>Export</b> to keep a copy. Predictions come from a model trained on historical IFC investment data and are guidance, not decisions.</p>
+    </footer>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <dialog id="confirm-dialog">
+    <form method="dialog">
+      <h3 id="dlg-title">Are you sure?</h3>
+      <p class="muted" id="dlg-text"></p>
+      <div class="budget-actions">
+        <button class="btn btn-secondary" value="cancel">Cancel</button>
+        <button class="btn btn-danger" value="ok" id="dlg-ok">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
